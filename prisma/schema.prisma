@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  seed     = "prisma/seed.ts"
+  // moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id                String             @id @default(uuid())
+  username          String             @unique @db.VarChar(255)
+  password          String             @db.VarChar(255)
+  email             String             @unique @db.VarChar(255)
+  firstName         String             @db.VarChar(255)
+  lastName          String             @db.VarChar(255)
+  phoneNumber       String             @db.VarChar(255)
+  profileImage      String?            @db.VarChar(255)
+  roleId            Int
+  positionId        String             @db.VarChar(36)
+  role              Role               @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  position          Position           @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  attendances       Attendance[]
+  userWorkSchedules UserWorkSchedule[]
+
+  @@map("users")
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique @db.VarChar(255)
+  users User[]
+
+  @@map("roles")
+}
+
+model Division {
+  id          String     @id @default(uuid())
+  name        String     @unique @db.VarChar(255)
+  description String?    @db.Text
+  positions   Position[]
+
+  @@map("divisions")
+}
+
+model Position {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(255)
+  description String?  @db.Text
+  divisionId  String   @db.VarChar(36)
+  division    Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+  users       User[]
+
+  @@map("positions")
+}
+
+model WorkSchedule {
+  id                   String             @id @default(uuid())
+  name                 String?            @db.VarChar(255)
+  description          String?            @db.Text
+  startTime            String             @db.VarChar(5) // Format "HH:mm"   
+  endTime              String             @db.VarChar(5) // Format "HH:mm"
+  lateToleranceMinutes Int
+  workScheduleDays     WorkScheduleDay[]
+  userWorkSchedules    UserWorkSchedule[]
+
+  @@map("work_schedules")
+}
+
+model WorkScheduleDay {
+  id             String       @id @default(uuid())
+  workScheduleId String       @db.VarChar(36)
+  workSchedule   WorkSchedule @relation(fields: [workScheduleId], references: [id], onDelete: Cascade)
+  dayOfWeek      Int // 0 = minggu, 1 = senin, 6 = sabtu
+
+  @@map("work_schedule_days")
+}
+
+model UserWorkSchedule {
+  id             String       @id @default(uuid())
+  userId         String       @db.VarChar(36)
+  workScheduleId String       @db.VarChar(36)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workSchedule   WorkSchedule @relation(fields: [workScheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workScheduleId]) // supaya satu user hanya bisa memiliki satu record untuk setiap jadwal kerja
+  @@map("user_work_schedules")
+}
+
+model Attendance {
+  id            String           @id @default(uuid())
+  userId        String           @db.VarChar(36)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        AttendanceStatus
+  workDate      DateTime         @db.Date
+  locationIn    String           @db.VarChar(255)
+  locationOut   String?          @db.VarChar(255)
+  proofImageIn  String           @db.VarChar(255)
+  proofImageOut String?          @db.VarChar(255)
+  attendanceIn  DateTime
+  attendanceOut DateTime?
+
+  @@unique([userId, workDate]) // supaya satu user hanya bisa memiliki satu record kehadiran per hari
+  @@index([userId, workDate])
+  @@map("attendances")
+}
+
+enum AttendanceStatus {
+  PRESENT // hadir
+  LATE // terlambat
+}
