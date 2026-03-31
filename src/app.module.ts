@@ -15,6 +15,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { DivisionModule } from './division/division.module';
 import { PositionModule } from './position/position.module';
 import { WorkScheduleModule } from './work_schedule/work_schedule.module';
+import { RoleModule } from './role/role.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { WorkScheduleModule } from './work_schedule/work_schedule.module';
     DivisionModule,
     PositionModule,
     WorkScheduleModule,
+    RoleModule,
   ],
   controllers: [AppController],
   providers: [
