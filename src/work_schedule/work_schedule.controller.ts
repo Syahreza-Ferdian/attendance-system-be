@@ -16,6 +16,7 @@ import { WorkScheduleQuery } from './dto/query-work_schedule.dto';
 import { NoFilesInterceptor } from '@nestjs/platform-express';
 import { CreateWorkScheduleDto } from './dto/create-work_schedule.dto';
 import { UpdateWorkScheduleDto } from './dto/update-work_schedule.dto';
+import { AssignWorkScheduleDto } from './dto/assign-work_schedule.dto';
 
 @Controller({
   path: 'work-schedules',
@@ -65,5 +66,13 @@ export class WorkScheduleController {
   @ResponseMessage('Successfully deleted work schedule')
   async deleteWorkSchedule(@Param('id') workScheduleId: string) {
     await this.workScheduleService.deleteWorkSchedule(workScheduleId);
+  }
+
+  @Post('assign')
+  @ForAdmin()
+  @UseInterceptors(NoFilesInterceptor())
+  @ResponseMessage('Successfully assigned work schedule to user')
+  async assignWorkScheduleToUser(@Body() dto: AssignWorkScheduleDto) {
+    return await this.workScheduleService.assignWorkScheduleToUser(dto);
   }
 }

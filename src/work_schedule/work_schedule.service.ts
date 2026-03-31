@@ -8,6 +8,7 @@ import { PaginationResponse } from 'src/common/pagination/pagination.interface';
 import { plainToInstance } from 'class-transformer';
 import { CreateWorkScheduleDto } from './dto/create-work_schedule.dto';
 import { UpdateWorkScheduleDto } from './dto/update-work_schedule.dto';
+import { AssignWorkScheduleDto } from './dto/assign-work_schedule.dto';
 
 // TODO: BUAT SERVICE UNTUK ASSIGN WORK SCHEDULE KE USER
 
@@ -134,6 +135,58 @@ export class WorkScheduleService {
   async deleteWorkSchedule(workScheduleId: string): Promise<void> {
     await this.prismaService.workSchedule.delete({
       where: { id: workScheduleId },
+    });
+  }
+
+  async assignWorkScheduleToUser(
+    dto: AssignWorkScheduleDto,
+  ): Promise<WorkScheduleEntity> {
+    const workSchedule = await this.prismaService.workSchedule.findUnique({
+      where: { id: dto.workScheduleId },
+      include: {
+        workScheduleDays: true,
+      },
+    });
+
+    if (!workSchedule) {
+      throw new BadRequestException('Work schedule not found');
+    }
+
+    const users = await this.prismaService.user.findMany({
+      where: { id: { in: dto.userIds } },
+      select: { id: true },
+    });
+
+    if (users.length !== dto.userIds.length) {
+      throw new BadRequestException(
+        'One or more users not found or invalid user IDs provided',
+      );
+    }
+
+    await this.prismaService.userWorkSchedule.createMany({
+      data: dto.userIds.map((userId) => ({
+        userId,
+        workScheduleId: dto.workScheduleId,
+      })),
+      skipDuplicates: true,
+    });
+
+    const updatedWorkSchedule =
+      await this.prismaService.workSchedule.findUnique({
+        where: { id: dto.workScheduleId },
+        include: {
+          workScheduleDays: true,
+          userWorkSchedules: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+    return plainToInstance(WorkScheduleEntity, updatedWorkSchedule, {
+      excludeExtraneousValues: true,
+      groups: ['withDay', 'withUserSchedule', 'withUser'],
     });
   }
 }
