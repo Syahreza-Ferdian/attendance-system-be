@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import { UserLogin, UserLoginResponse } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
@@ -12,19 +12,27 @@ export class AuthenticationService {
   ) {}
 
   async login(userLoginDto: UserLogin): Promise<UserLoginResponse> {
-    const { user, hashedPassword: password } =
-      await this.userService.findUserDynamic(
-        {
-          username: userLoginDto.username ?? undefined,
-          email: userLoginDto.email ?? undefined,
-        },
-        true,
-      );
+    const { identifier } = userLoginDto;
+
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
+    const { user, hashedPassword } = await this.userService.findUserDynamic(
+      {
+        username: !isEmail ? identifier : undefined,
+        email: isEmail ? identifier : undefined,
+      },
+      true,
+      ['withRole', 'withPosition', 'withWorkSchedule', 'withDivision'],
+    );
 
     // console.log('User found:', user);
 
-    if (!bcrypt.compareSync(userLoginDto.password, password!)) {
-      throw new UnauthorizedException('Invalid credentials');
+    if (!bcrypt.compareSync(userLoginDto.password, hashedPassword!)) {
+      throw new BadRequestException(
+        isEmail
+          ? 'Email or password is incorrect'
+          : 'Username or password is incorrect',
+      );
     }
 
     const payload = {
