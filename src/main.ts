@@ -5,11 +5,23 @@ import { HttpErrorFilter } from './common/exceptions/http/http.filter';
 import { ResponseInterceptor } from './common/response/response.interceptor';
 import * as dotenv from 'dotenv';
 import { PrismaFilter } from './common/exceptions/prisma/prisma.filter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  const config = new DocumentBuilder()
+    .setTitle('WFH Attendance System API')
+    .setDescription('API documentation for WFH Attendance System')
+    .setVersion('1.0')
+    .addServer('/api/v1')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -17,7 +17,15 @@ import { NoFilesInterceptor } from '@nestjs/platform-express';
 import { CreateWorkScheduleDto } from './dto/create-work_schedule.dto';
 import { UpdateWorkScheduleDto } from './dto/update-work_schedule.dto';
 import { AssignWorkScheduleDto } from './dto/assign-work_schedule.dto';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
+@ApiBearerAuth()
+@ApiTags('Work Schedules')
 @Controller({
   path: 'work-schedules',
   version: '1',
@@ -28,6 +36,13 @@ export class WorkScheduleController {
   @Get()
   @ForAdmin()
   @ResponseMessage('Successfully retrieved all work schedules')
+  @ApiOperation({
+    summary: 'Get all work schedules with pagination and optional search',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of work schedules',
+  })
   async getAllWorkSchedules(@Query() query: WorkScheduleQuery) {
     return await this.workScheduleService.getAllWorkSchedules(query);
   }
@@ -35,6 +50,13 @@ export class WorkScheduleController {
   @Get(':id')
   @ForAdmin()
   @ResponseMessage('Successfully retrieved work schedule information')
+  @ApiOperation({
+    summary: 'Get work schedule information by ID',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Work schedule information',
+  })
   async getWorkScheduleById(@Param('id') workScheduleId: string) {
     return await this.workScheduleService.getWorkScheduleById(workScheduleId);
   }
@@ -43,6 +65,13 @@ export class WorkScheduleController {
   @ForAdmin()
   @ResponseMessage('Successfully created work schedule')
   @UseInterceptors(NoFilesInterceptor())
+  @ApiOperation({
+    summary: 'Create a new work schedule',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'The work schedule has been successfully created.',
+  })
   async createWorkSchedule(@Body() dto: CreateWorkScheduleDto) {
     return await this.workScheduleService.createWorkSchedule(dto);
   }
@@ -51,6 +80,13 @@ export class WorkScheduleController {
   @ForAdmin()
   @UseInterceptors(NoFilesInterceptor())
   @ResponseMessage('Successfully updated work schedule')
+  @ApiOperation({
+    summary: 'Update an existing work schedule',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'The work schedule has been successfully updated.',
+  })
   async updateWorkSchedule(
     @Param('id') workScheduleId: string,
     @Body() dto: UpdateWorkScheduleDto,
@@ -64,6 +100,13 @@ export class WorkScheduleController {
   @Delete(':id')
   @ForAdmin()
   @ResponseMessage('Successfully deleted work schedule')
+  @ApiOperation({
+    summary: 'Delete a work schedule by ID',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'The work schedule has been successfully deleted.',
+  })
   async deleteWorkSchedule(@Param('id') workScheduleId: string) {
     await this.workScheduleService.deleteWorkSchedule(workScheduleId);
   }
@@ -71,6 +114,14 @@ export class WorkScheduleController {
   @Post('assign')
   @ForAdmin()
   @UseInterceptors(NoFilesInterceptor())
+  @ApiOperation({
+    summary: 'Assign a work schedule to a user',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'The work schedule has been successfully assigned to the user.',
+  })
   @ResponseMessage('Successfully assigned work schedule to user')
   async assignWorkScheduleToUser(@Body() dto: AssignWorkScheduleDto) {
     return await this.workScheduleService.assignWorkScheduleToUser(dto);
