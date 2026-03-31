@@ -46,7 +46,13 @@ export class UsersService {
       },
       include: {
         role: relationsToInclude?.includes('withRole') ?? false,
-        position: relationsToInclude?.includes('withPosition') ?? false,
+        position: relationsToInclude?.includes('withPosition')
+          ? {
+              include: {
+                division: relationsToInclude?.includes('withDivision') ?? false,
+              },
+            }
+          : false,
         userWorkSchedules: {
           include: {
             workSchedule: {
@@ -102,7 +108,11 @@ export class UsersService {
       where,
       include: {
         role: true,
-        position: true,
+        position: {
+          include: {
+            division: true,
+          },
+        },
         userWorkSchedules: {
           include: {
             workSchedule: true,
@@ -112,8 +122,32 @@ export class UsersService {
       transform: (user) =>
         plainToInstance(UserEntity, user, {
           excludeExtraneousValues: true,
-          groups: ['withRole', 'withPosition', 'withWorkSchedule'],
+          groups: [
+            'withRole',
+            'withPosition',
+            'withDivision',
+            'withWorkSchedule',
+          ],
         }),
+    });
+  }
+
+  async getUserById(id: string): Promise<UserEntity> {
+    const user = await this.prismaService.user.findUniqueOrThrow({
+      where: { id },
+      include: {
+        role: true,
+        position: {
+          include: {
+            division: true,
+          },
+        },
+      },
+    });
+
+    return plainToInstance(UserEntity, user, {
+      excludeExtraneousValues: true,
+      groups: ['withRole', 'withPosition', 'withDivision'],
     });
   }
 
@@ -238,6 +272,16 @@ export class UsersService {
       excludeExtraneousValues: true,
       groups: ['withRole', 'withPosition'],
     });
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    const deletedUser = await this.prismaService.user.delete({
+      where: { id },
+    });
+
+    if (deletedUser.profileImage) {
+      await this.uploadService.deleteFile(deletedUser.profileImage);
+    }
   }
 
   // async assignWorkSchedule()
