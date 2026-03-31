@@ -19,6 +19,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { imageUploadConfig } from 'src/upload/upload.config';
 import { UserQuery } from './dto/query-user.dto';
+import { AttendanceService } from 'src/attendance/attendance.service';
 
 @Controller({
   path: 'users',
@@ -35,7 +36,7 @@ export class UsersController {
         userId: user.sub,
       },
       false,
-      ['withRole', 'withPosition'],
+      ['withRole', 'withPosition', 'withDivision'],
     );
   }
 
@@ -44,6 +45,13 @@ export class UsersController {
   @ResponseMessage('Successfully retrieved all users')
   async getAllUsers(@Query() query: UserQuery) {
     return await this.usersService.getAllUsers(query);
+  }
+
+  @Get(':id')
+  @ForAdmin()
+  @ResponseMessage('Successfully retrieved user information')
+  async getUserById(@Param('id') id: string) {
+    return await this.usersService.getUserById(id);
   }
 
   @Post()
@@ -67,6 +75,13 @@ export class UsersController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return await this.usersService.updateUser(id, userData, file);
+  }
+
+  @Delete(':id')
+  @ForAdmin()
+  @ResponseMessage('Successfully deleted user')
+  async deleteUser(@Param('id') id: string) {
+    return await this.usersService.deleteUser(id);
   }
 
   @Delete(':id/profile-picture')
