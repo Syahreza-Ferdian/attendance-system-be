@@ -205,13 +205,214 @@ export class AttendanceService {
       query,
       where,
       include: {
-        user: true,
+        user: {
+          include: {
+            position: {
+              include: {
+                division: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        workDate: 'desc',
       },
       transform: (attendance) =>
         plainToInstance(AttendanceEntity, attendance, {
           excludeExtraneousValues: true,
-          groups: ['withUser'],
+          groups: ['withUser', 'withPosition', 'withDivision'],
         }),
     });
+  }
+
+  async getAttendanceById(attendanceId: string): Promise<AttendanceEntity> {
+    const attendance = await this.prismaService.attendance.findUniqueOrThrow({
+      where: { id: attendanceId },
+      include: {
+        user: {
+          include: {
+            position: {
+              include: {
+                division: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return plainToInstance(AttendanceEntity, attendance, {
+      excludeExtraneousValues: true,
+      groups: ['withUser', 'withPosition', 'withDivision'],
+    });
+  }
+
+  async attendanceStatsByDate(date: string) {
+    const stats = await this.prismaService.attendance.groupBy({
+      by: ['status'],
+      where: {
+        workDate: {
+          gte: convertStringToDate(date).startOf('day').toDate(),
+          lte: convertStringToDate(date).endOf('day').toDate(),
+        },
+      },
+      _count: {
+        status: true,
+      },
+    });
+
+    const totalEmployees = await this.prismaService.user.count();
+    const totalPresent = stats.find(
+      (stat) => stat.status === AttendanceStatus.PRESENT,
+    )?._count.status;
+    const totalLate = stats.find(
+      (stat) => stat.status === AttendanceStatus.LATE,
+    )?._count.status;
+
+    const presentPercentage =
+      totalEmployees && totalPresent
+        ? Math.round((totalPresent / totalEmployees) * 100)
+        : 0;
+
+    const latePercentage =
+      totalEmployees && totalLate
+        ? Math.round((totalLate / totalEmployees) * 100)
+        : 0;
+
+    const formattedStats = {
+      present: 0,
+      late: 0,
+      totalEmployees,
+      presentPercentage,
+      latePercentage,
+    };
+
+    stats.forEach((stat) => {
+      formattedStats[stat.status.toLowerCase()] = stat._count.status;
+    });
+
+    return formattedStats;
+  }
+
+  async getUserTodayAttendance(userId: string): Promise<AttendanceEntity> {
+    const today = convertToISO8601(now());
+
+    const attendance = await this.prismaService.attendance.findUniqueOrThrow({
+      where: { userId_workDate: { userId, workDate: today } },
+      include: {
+        user: {
+          include: {
+            position: {
+              include: {
+                division: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return plainToInstance(AttendanceEntity, attendance, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  async getUserLastSevenDaysAttendance(
+    userId: string,
+  ): Promise<AttendanceEntity[]> {
+    const today = now();
+
+    const startDate = today.subtract(6, 'day').startOf('day').toDate();
+    const endDate = today.endOf('day').toDate();
+
+    const attendances = await this.prismaService.attendance.findMany({
+      where: {
+        userId,
+        workDate: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      orderBy: {
+        workDate: 'asc',
+      },
+    });
+
+    return attendances.map((attendance) =>
+      plainToInstance(AttendanceEntity, attendance, {
+        excludeExtraneousValues: true,
+      }),
+    );
+  }
+
+  async getUserAttendanceStats(userId: string) {
+    const today = now();
+
+    const startOfThisMonth = today.startOf('month').toDate();
+    const endOfThisMonth = today.endOf('month').toDate();
+
+    const startOfLastMonth = today
+      .subtract(1, 'month')
+      .startOf('month')
+      .toDate();
+
+    const endOfLastMonth = today.subtract(1, 'month').endOf('month').toDate();
+
+    const [thisMonthStats, lastMonthStats] = await Promise.all([
+      this.prismaService.attendance.groupBy({
+        by: ['status'],
+        where: {
+          userId,
+          workDate: {
+            gte: startOfThisMonth,
+            lte: endOfThisMonth,
+          },
+        },
+        _count: {
+          status: true,
+        },
+      }),
+      this.prismaService.attendance.groupBy({
+        by: ['status'],
+        where: {
+          userId,
+          workDate: {
+            gte: startOfLastMonth,
+            lte: endOfLastMonth,
+          },
+        },
+        _count: {
+          status: true,
+        },
+      }),
+    ]);
+
+    const formattedStats = {
+      presentThisMonth: 0,
+      lateThisMonth: 0,
+      presentLastMonth: 0,
+      lateLastMonth: 0,
+    };
+
+    thisMonthStats.forEach((stat) => {
+      if (stat.status === AttendanceStatus.PRESENT) {
+        formattedStats.presentThisMonth = stat._count.status;
+      }
+      if (stat.status === AttendanceStatus.LATE) {
+        formattedStats.lateThisMonth = stat._count.status;
+      }
+    });
+
+    lastMonthStats.forEach((stat) => {
+      if (stat.status === AttendanceStatus.PRESENT) {
+        formattedStats.presentLastMonth = stat._count.status;
+      }
+      if (stat.status === AttendanceStatus.LATE) {
+        formattedStats.lateLastMonth = stat._count.status;
+      }
+    });
+
+    return formattedStats;
   }
 }

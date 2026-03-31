@@ -3,6 +3,8 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
+  Param,
   Post,
   Query,
   UploadedFile,
@@ -59,5 +61,47 @@ export class AttendanceController {
     }
 
     return await this.attendanceService.clockOut(user.sub, dto, file);
+  }
+
+  @Get('stats')
+  @ForAdmin()
+  @ResponseMessage('Successfully retrieved attendance statistics')
+  async getAttendanceStats(@Query('date') date: string) {
+    return await this.attendanceService.attendanceStatsByDate(date);
+  }
+
+  @Get('user/today')
+  @ResponseMessage("Sucessfully retrieved user today's attendance records")
+  async getTodayAttendance(@CurrentUser() user: { sub: string }) {
+    try {
+      return await this.attendanceService.getUserTodayAttendance(user.sub);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return null;
+      }
+    }
+  }
+
+  @Get('user/last-week')
+  @ResponseMessage(
+    "Successfully retrieved user's attendance records for the last week",
+  )
+  async getLastWeekAttendance(@CurrentUser() user: { sub: string }) {
+    return await this.attendanceService.getUserLastSevenDaysAttendance(
+      user.sub,
+    );
+  }
+
+  @Get('user/stats')
+  @ResponseMessage("Successfully retrieved user's attendance statistics")
+  async getUserAttendanceStats(@CurrentUser() user: { sub: string }) {
+    return await this.attendanceService.getUserAttendanceStats(user.sub);
+  }
+
+  @Get(':attendanceId')
+  @ForAdmin()
+  @ResponseMessage('Successfully retrieved attendance record information')
+  async getAttendanceById(@Param('attendanceId') attendanceId: string) {
+    return await this.attendanceService.getAttendanceById(attendanceId);
   }
 }
